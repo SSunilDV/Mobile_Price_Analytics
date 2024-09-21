@@ -1,0 +1,272 @@
+---
+title: "Regression analysis"
+author: "Surimalla Sunil Durga Venkat"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+Name: Surimalla Sunil Durga Venkat
+
+UTA ID:1002156577
+
+Data set : Flipkart Mobile data set
+
+Where it is coming from: Took this data set from kaggle , you can find it here : https://www.kaggle.com/datasets/shubhambathwal/flipkart-mobile-dataset?select=Flipkart+Mobile+-+2.csv
+
+Info regarding the data :
+The data set consists of data of mobile phones with all the features, prices, sales, discount offered etc of 5 popular brands which are Apple, Poco, Realme, Samsung, and Xiaomi. In the assignment 2 we did EDA on mobiles data set to see which mobiles are sold most and in which price range they are sold more, now using the same data set lets do the regression analysis but now we will predict the price of the mobile based on the features of the mobile removing the sales columns which are not related to the price of the mobile.
+
+Loading the data set
+```{r}
+df <- read.csv("Flipkart Mobile - 2.csv")
+```
+as we loaded the data set lets see the columns and observations present
+```{r}
+head(df)
+```
+```{r}
+dim(df)
+```
+we can see there are 430 observations and 16 columns in the data set but all the 16 columns are not necessary for predicting the price. for example, if we consider the base_color, what ever be the color of the mobile, the price will be same if the features are same, brand name and model name are the names which are used to distinguish mobiles and next we have ratings, discount price and sales numbers which are not helpful in predicting the prices of the mobile as they are seen after the product is launched. so lets remove those columns. we will be also dropping the screen size as we already have display size by which we knows the display size is small or large. Remaining columns are the features for the mobile which will be used for predicting the price.
+
+Dropping the columns brand, model,screen_size, base_color, ratings, num_of_ratings, discount_percent and sales.
+```{r}
+df <-df[,!names(df) %in% c('brand', 'model', 'base_color','screen_size',
+                           'ratings', 'num_of_ratings', 'discount_percent', 'sales')]
+head(df)
+```
+```{r}
+dim(df)
+```
+we have reduced the data set to 8 columns named below. 
+```{r}
+colnames(df)
+```
+we have successfully removed the columns, now lets see the data types and statistic summary of the data.
+```{r}
+df_types <- sapply(df, typeof)
+print(df_types)
+```
+```{r}
+summary(df)
+```
+we have processor which is the categorical data present in the data set, now we will need to convert them into numerical data. So we will be needed to create dummy variables for the processor category, but in linear regression in r those will be automatically taken care of by the regression.
+
+now features looks good, now lets do EDA for the data before doing analysis for regression to know how features are related to the price and to see for any outliers or missing values in the data.
+
+```{r}
+sum(is.na(df))
+```
+```{r}
+colSums(is.na(df))
+```
+
+There are no null values, Now lets draw plots to visualize the data.
+
+```{r}
+par(mfrow=c(1,2))
+barplot(table(df$ROM), col="blue", xlab="Rom")
+barplot(table(df$RAM), col="blue", xlab="Ram")
+```
+From the above bar plots we can see that the most of the mobiles have 128 gb Rom and more than 120 mobiles have 4 gb ram.
+
+```{r}
+par(mfrow=c(1,2))
+barplot(table(df$num_rear_camera), col="red", xlab="Rear Camera")
+barplot(table(df$num_front_camera), col="red", xlab="Front Camera")
+```
+From the above bar plots we can see that more phones comes with 3 cameras and have 1 front camera.
+
+```{r}
+barplot(table(df$processor), col="yellow", xlab="Processor")
+```
+
+Seems like Mediatek and Qualcomm processor is mostly used in the mobiles in the data we have.
+
+### Do you see outliers?
+```{r}
+par(mfrow=c(1,2))
+boxplot(df$battery_capacity, col="red")
+hist(df$battery_capacity, col="red")
+
+```
+seems like there are outliers in the battery,where 1 is below 2000 mah and other is at 7000mah , and also more than 120 mobiles have battery mah in between 4500 to 5000 mah.The data we have is less than 500 observations so if we remove them we will have much less data and we might loose some mobiles data too as some mobiles have battery less than 2000 and even more than 6000, so we are not removing outliers from battery.
+
+```{r}
+hist(df$sales_price, col="purple", breaks=39)
+```
+seems like there are more mobiles under 40000 and because of which data is right skewed.
+
+### What is the correlation between the independent and dependent variable?
+Now lets see for co-relation :
+```{r}
+subset <- df[, 2:8]
+corrm <- cor(subset)
+
+heatmap(corrm, Rowv = NA, Colv = NA)
+```
+we can see that there is a corelation between some features, where highest relation is between rom and sales price and then ram and rom also have a relationship, lets see VIF after regression model to see the corelation between them.
+
+Now lets plot some scatter plots to see for relation between features and price.
+```{r}
+plot(df$ROM, df$sales_price)
+```
+
+```{r}
+plot(df$RAM, df$sales_price)
+```
+
+```{r}
+plot(df$battery_capacity, df$sales_price)
+```
+```{r}
+plot(df$display_size, df$sales_price)
+```
+
+```{r}
+plot(df$num_rear_camera, df$sales_price)
+```
+```{r}
+plot(df$num_front_camera, df$sales_price)
+```
+### During your EDA, did you notice linear relationship?
+From the above scatter plots we can see that all the features shown linear relation ship where ram,Rom,battery capacity,number of rear camera, display size have shown positive relationship but number of front camera shows negative relationship.
+
+the final columns we have are
+```{r}
+colnames(df)
+```
+Now lets do regression analysis for the final data set.
+```{r}
+model <- lm(sales_price ~ ROM + RAM + display_size + 
+              num_rear_camera + num_front_camera + battery_capacity + processor,
+            data = df)
+summary(model)
+```
+### How do you interpret the intercept? (watch out for the units that it was measured)
+Here in the equation y is price and the x are the features. The intercept here which is -78554.1499 represents the predicted value when all predictor variables are zero, which means the price will be -78554.1499 when the features of the mobile are zero.
+
+### How do you interpret the slope? (watch out for the units that it was measured)
+The coefficients for the respective features will be the slopes for the features.slope of a linear regression model depends on the units of measure of the variables involved. The slope represents the change in the dependent variable (y) for a one-unit increase in the independent variable (x). It reflects the rate of change or the sensitivity of y with respect to x.
+
+For instance,if we see the coefficient of ram its 2433.6239 which means for every increase of 1gb of ram the price will be increased by 2433.6239 and similarly for other features.
+
+###Are the coefficients statistically significant?
+####1.What is the null and alternative hypothesis that you are testing?
+####2.What are your conclusions and why?
+if we see the p values of the features we can see that the p value of number of front camera is 0.259 which is greater than 0.05 which means its not significant so we can remove that, where as the rest of the features have p value less than 0.05 which means they statistically significant in predicting the price.
+
+coming to the hypothesis testing, we have our null hypothesis (H_0,) for each coefficient is that the corresponding predictor variable has no effect on the response variable. In other words, the null hypothesis states that the coefficients are equal to zero.The alternative hypothesis (H_a) for each coefficient is that the corresponding predictor variable has a non-zero effect on the response variable. In other words, the alternative hypothesis states that the coefficients are not equal to zero. so now if we see the p values we have p value close to 0 we can reject the null hypothesis and we can say that coefficients are not zero. so finally we can conclude that the features are significant in predicting the response variable which is price.
+
+### What is the value of the coefficient of determination and how do you interpret it?
+The coefficient of determination which is R- squared value we got is 0.7938 which means 79.38% variation of price(y) is explained by the features(x).
+
+we got the f statistic value : 133.7 and the corresponding p value is <0.05 and hence we can say that the model is significant.
+
+The linear equation for the model is :
+```{r}
+intercept <- coef(model)[1] 
+ROM <- coef(model)[2]
+RAM <- coef(model)[3]
+display_size <- coef(model)[4]
+num_rear_camera <- coef(model)[5]
+num_front_camera <- coef(model)[6]
+battery_capacity <- coef(model)[7]
+processor_Exynos <- coef(model)[8]
+processor_iOS <- coef(model)[9]
+processor_MediaTek <- coef(model)[10]
+processor_Others <- coef(model)[11]
+processor_Qualcomm <- coef(model)[12]
+processor_Water <- coef(model)[13]
+# Create the equation of best fit line
+line_eq <- paste0("y = ", intercept, " + ", ROM, " * x1", " + ",  RAM, " * x2", 
+                  " + ",  display_size, " * x3 ",  num_rear_camera, " * x4 ", 
+                  num_front_camera, " * x5 ",  battery_capacity, " * x6 ", 
+                  processor_Exynos, " * x7 ",  processor_iOS, " * x8 ", 
+                  processor_MediaTek, " * x9 ",  processor_Others, " * x10 ", 
+                  processor_Qualcomm, " * x11 ",  processor_Water, " * x12")
+```
+### Obtain the equation of the line that fits to the data (print output and interpret it).
+```{r}
+line_eq
+```
+
+### Write the equation for the regression line
+which can also be written as :
+```{r}
+line_eqv <- paste0("sales_price = ", intercept, " + ", ROM, " * ROM", " + ", 
+                   RAM, " * RAM", " + ",  display_size, " * display_size ",  
+                   num_rear_camera, " * num_rear_camera ",  num_front_camera,
+                   " * num_front_camera ",  battery_capacity, 
+                   " * battery_capacity ",  processor_Exynos, " * processor_Exynos 
+                   ",  processor_iOS, " * processor_iOS ",  processor_MediaTek,
+                   " * processor_MediaTek ",  processor_Others, " * processor_Others ",
+                   processor_Qualcomm, " * processor_Qualcomm",  processor_Water, " * processor_Water")
+line_eqv
+```
+### What is the variance of the model?
+```{r}
+model.variance <- var(model$residuals)
+sprintf("The variance of the model is : %f", model.variance)
+```
+### Plot the regression fitted line on the scatterplot.
+lets plot the best fitted regression for the features and the price.
+```{r }
+library('visreg')
+
+visreg(model)
+```
+Although we can’t plot a single fitted regression line on a 2-D plot since we have multiple predictor variables, these plots allow us to observe the relationship between each individual predictor variable and the response variable while holding other predictor variables constant.
+
+```{r}
+library('car')
+vif(model)
+```
+we can see from the GVIF values in the above table, all the values are below 5, hence we can say that there is less multi collinearity between the features.
+
+```{r,fig.width=6, fig.height=6}
+par(mfrow=c(2,2))
+plot(model)
+```
+### Model assumptions:
+####What are the model assumptions
+####How do you test for them? Do they hold?
+we can test them by diagnosing the residual vs fitted values graph, Q-Q residual graph, square root of residuals vs fitted values and then durbin watson test.
+Model assumptions:
+1.Linearity : as we plotted the scatter plots of features with respect to the price and we seen that there is a linear relation ship between them but from the above plot between the residuals and fitted value we can see that there is almost horizontal line, so this assumption holds.
+```{r}
+library('car')
+durbinWatsonTest(model)
+```
+2.Independence : From the output we can see that the test statistic is 1.573279 and the corresponding p-value is 0. Since this p-value is less than 0.05, we can reject the null hypothesis and conclude that the residuals in this regression model are auto correlated. Hence we can conclude that the assumption do not hold.
+
+3. Homoscedesticity : from the plot above between sqrt of  standard residuals and fitted values we can see the line is not flat and horizontal, Hence we can conclude that the assumption do not hold.
+
+```{r}
+hist(model$residuals, col="purple", breaks=39)
+```
+
+4.Normality : in the above Q-Q plot we can see that points approximately follows a straight line and also in the above histogram of residuals we can see the normal distribution hence we can say that they do follow normality.
+
+### What does the Box-Cox transformation suggest you do?
+as the assumptions homoscedasticity and independence does'nt hold i suggest we do homoscedasticity box cox transformation where we transform the y based on the lambda value.
+
+```{r}
+library(MASS)
+bc <- boxcox(ROM~ sales_price, data=df)
+lambda <- bc$x[which.max(bc$y)]
+```
+
+
+```{r}
+lambda
+```
+we got lambda value as 0.4646 which is close to 0.5 which means we will be using square root transformation of y in order to transfer the data to correct the errors in model. 
+
+Finally coming to the suggestions to improve the model:
+
+1.we can add more features to the data set which can be camera pixels, build type etc to improve more chances for prediction. 
+2.we can remove outlier's to improve the performance of the model, as we have less observations we didnt remove them.
+3.using the box cox transformations we can fix the assumptions which do not hold and improve the model
+4.we can use cross validation techniques to estimate performance which helps reduce over fitting of the model.
+5.we can do feature selection to keep only the good features for predicting the price by using step wise or lasso regression.So from our model results we can see that number of front camera is of not significant so we can try removing them. 
+
